@@ -1,0 +1,11 @@
+# IDE files
+.vscode
+
+# built distribution files
+*egg-info/
+
+# pycache
+*/__pycache__/*
+
+# rai logs
+z.log.global
