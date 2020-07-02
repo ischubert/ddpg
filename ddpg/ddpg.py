@@ -2,6 +2,7 @@
 Class for RL with DDPG
 """
 import tensorflow as tf
+from tensorflow import keras
 import numpy as np
 
 
@@ -15,7 +16,7 @@ class DDPGBase():
             actor,
             critic,
             gamma=0.9,
-            tau=0.9,
+            tau=0.1,
             critic_epochs=10,
             actor_epochs=10,
             critic_batch_size=32,
@@ -30,6 +31,15 @@ class DDPGBase():
         self.critic_batch_size = critic_batch_size
         self.actor_batch_size = actor_batch_size
 
+        # create target networks by cloning
+        # the original networks
+        self.actor_target = keras.models.clone_model(
+            self.actor
+        )
+        self.critic_target = keras.models.clone_model(
+            self.critic
+        )
+
     def train(
             self,
             states,
@@ -41,16 +51,16 @@ class DDPGBase():
         """
         Train both actor and critic based on data from the buffer
         """
-        # TODO: Finish implementation, take special care of the target network stuff which I ignored so far
-        critic_targets = rewards + self.gamma*self.critic([
+        # the critic target is calculated from the target networks
+        critic_targets = rewards.reshape(-1, 1) + self.gamma*np.array(self.critic_target([
             next_states,
             # next actions
-            self.actor([
+            self.actor_target([
                 next_states,
                 goals
             ]),
             goals
-        ])
+        ]))
 
         # update critic
         self.critic.fit(
@@ -63,8 +73,11 @@ class DDPGBase():
             # Y
             critic_targets,
             epochs=self.critic_epochs,
-            batch_size=self.critic_batch_size
+            batch_size=self.critic_batch_size,
+            verbose=1
         )
+
+        print('hi!')
 
         # update actor
         for _ in range(self.actor_epochs):
@@ -87,9 +100,34 @@ class DDPGBase():
                         goals[batch]
                     ])
                     actor_loss = -tf.math.reduce_mean(critic_value)
-
-                actor_grad = tape.gradient(
-                    actor_loss, self.actor.trainable_variables)
+                    actor_grad = tape.gradient(
+                        actor_loss, self.actor.trainable_variables)
+                
+                # apply_gradients does a step into the opposite direction
+                # of the input gradient, since it expects the gradient to
+                # be with respect to a loss that should be minimized
                 self.actor.optimizer.apply_gradients(
                     zip(actor_grad, self.actor.trainable_variables)
                 )
+
+        # update targets (weights are a list of numpy arrays)
+        self.actor_target.set_weights(
+            [
+                self.tau * weights
+                + (1 - self.tau) * target_weights
+                for weights, target_weights in zip(
+                    self.actor.get_weights(),
+                    self.actor_target.get_weights()
+                )
+            ]
+        )
+        self.critic_target.set_weights(
+            [
+                self.tau * weights
+                + (1 - self.tau) * target_weights
+                for weights, target_weights in zip(
+                    self.critic.get_weights(),
+                    self.critic_target.get_weights()
+                )
+            ]
+        )
