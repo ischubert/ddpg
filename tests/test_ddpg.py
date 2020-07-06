@@ -51,6 +51,10 @@ fx = keras.layers.Dense(20, activation='relu')(fx)
 fx = keras.layers.Dense(20, activation='relu')(fx)
 fx = keras.layers.Dense(20, activation='relu')(fx)
 fx = keras.layers.Dense(20, activation='relu')(fx)
+fx = keras.layers.Dense(20, activation='relu')(fx)
+fx = keras.layers.Dense(20, activation='relu')(fx)
+fx = keras.layers.Dense(20, activation='relu')(fx)
+fx = keras.layers.Dense(20, activation='relu')(fx)
 fx = keras.layers.Dense(10, activation='relu')(fx)
 fx = keras.layers.Dense(2, activation='linear')(fx)
 fx = tf.keras.backend.l2_normalize(
@@ -73,7 +77,7 @@ agent = ddpg.ddpg.DDPGBase(
 )
 
 # %%
-goal = np.random.rand(2)
+goal = np.array([0.5,0.5])
 
 states = []
 actions = []
@@ -89,6 +93,14 @@ state_grid = np.stack(np.meshgrid(
     np.linspace(0, 1, n_state_grid)
 ))[[1, 0]].reshape(2, n_state_grid*n_state_grid).T
 
+def calculate_reward(next_states, goal):
+    next_states = next_states.reshape(-1,2)
+
+    return (2 - np.linalg.norm(
+        goal[None,:] - next_states,
+        axis=-1
+    )).reshape(-1)
+
 for iteration in range(1000):
 
     state = np.random.rand(2)
@@ -96,10 +108,14 @@ for iteration in range(1000):
     action = 2*np.random.rand(2)-1
     action = action / np.linalg.norm(action)
 
-    next_state = state + action/20
+    next_state = np.clip(
+        state + action/20,
+        0, 1
+    )
 
-    reward = 2- np.linalg.norm(
-        goal - next_state
+    reward = calculate_reward(
+        next_state,
+        goal
     )
 
     states.append(state)
@@ -136,9 +152,15 @@ for iteration in range(1000):
                 # actor only outputs normalized actions
                 test_state += action.reshape(-1)/20
 
+                test_state = np.clip(
+                    test_state + action.reshape(-1)/20,
+                    0, 1
+                )
+
                 test_rewards.append(
-                    2- np.linalg.norm(
-                        goal - test_state
+                    calculate_reward(
+                        test_state,
+                        goal
                     )
                 )
 
@@ -166,30 +188,57 @@ for iteration in range(1000):
             np.mean(returns)
         )
 
-        q_vals = np.array(agent.critic([
-            state_grid,
-            np.repeat(
-                np.array([1.,0.])[None,:],
-                len(state_grid),
-                axis=0
-            ),
-            np.repeat(
-                goal[None,:],
-                len(state_grid),
-                axis=0
+        goals_to_plot = np.array([
+            [1,0],
+            [0,1],
+            [-1,0],
+            [0,-1]
+        ], dtype=float)
+        q_vals = np.array([
+            np.array(agent.critic.predict([
+                state_grid,
+                np.repeat(
+                    goal[None,:],
+                    len(state_grid),
+                    axis=0
+                ),
+                np.repeat(
+                    goal[None,:],
+                    len(state_grid),
+                    axis=0
+                )
+            ]))
+            for goal in goals_to_plot
+        ])
+        
+        plt.imshow(
+            q_vals[0].reshape(
+                n_state_grid,
+                n_state_grid
             )
-        ]))
-        plt.imshow(q_vals.reshape(
-            n_state_grid,
-            n_state_grid
-        ))
+        )
         plt.colorbar()
+
+        winner = np.argmax(
+            q_vals,
+            axis=0
+        )
+        winning_dirs = np.squeeze(goals_to_plot[winner])
+        # breakpoint()
+
+        plt.figure(figsize=(7, 7))
+        plt.quiver(
+            state_grid[:,0],
+            state_grid[:,1],
+            winning_dirs[:,0],
+            winning_dirs[:,1]
+        )
         plt.show()
 
         plt.imshow(
-            2-np.linalg.norm(
-                goal[None,:] - state_grid,
-                axis=-1
+            calculate_reward(
+                np.array(state_grid),
+                goal
             ).reshape(
                 n_state_grid,
                 n_state_grid
@@ -200,5 +249,41 @@ for iteration in range(1000):
 
         plt.plot(performance_trajectory)
         plt.show()
+
+# %%
+# tape gradient test
+
+model = keras.models.Sequential([
+    keras.layers.Dense(10, activation='relu', input_shape=(5,)),
+    keras.layers.Dense(10, activation='relu'),
+    keras.layers.Dense(1, activation='relu')
+])
+
+model.optimizer = keras.optimizers.Adam(lr=0.0001)
+
+mean_vals = []
+for _ in range(1000):
+    with tf.GradientTape() as tape:
+        Y = model.predict(
+            np.random.rand(1000,5)
+        )
+        loss = -tf.math.reduce_mean(Y)
+
+        grad = tape.gradient(
+            loss, model.trainable_variables
+        )
+
+        model.optimizer.apply_gradients(
+            zip(grad, model.trainable_variables)
+        )
+    mean_vals.append(
+        np.mean(
+                model(
+                np.random.rand(100,5)
+            )
+        )
+    )
+
+plt.plot(mean_vals)
 
 # %%

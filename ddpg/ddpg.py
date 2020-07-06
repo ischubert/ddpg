@@ -52,7 +52,7 @@ class DDPGBase():
         Train both actor and critic based on data from the buffer
         """
         # the critic target is calculated from the target networks
-        critic_targets = rewards.reshape(-1, 1) + self.gamma*np.array(self.critic_target([
+        critic_targets = rewards.reshape(-1, 1) + self.gamma*np.array(self.critic_target.predict([
             next_states,
             # next actions
             self.actor_target([
@@ -80,12 +80,14 @@ class DDPGBase():
         print('hi!')
 
         # update actor
-        for _ in range(self.actor_epochs):
+        for epoch_count in range(self.actor_epochs):
 
             indices = np.random.permutation(len(states))
             batches = indices[
                 :self.actor_batch_size*(len(states)//self.actor_batch_size)
             ].reshape(-1, self.actor_batch_size)
+
+            mean_loss = 0
 
             for batch in batches:
 
@@ -94,7 +96,7 @@ class DDPGBase():
                         states[batch],
                         goals[batch]
                     ])
-                    critic_value = self.critic([
+                    critic_value = self.critic.predict([
                         states[batch],
                         actor_actions,
                         goals[batch]
@@ -109,6 +111,13 @@ class DDPGBase():
                 self.actor.optimizer.apply_gradients(
                     zip(actor_grad, self.actor.trainable_variables)
                 )
+
+                mean_loss += float(actor_loss) * (-1/len(batches))
+            
+            if epoch_count%10 == 1:
+                print('Epoch {}/{}: Actor mean return {}'.format(
+                    epoch_count, self.actor_epochs, mean_loss
+                ))
 
         # update targets (weights are a list of numpy arrays)
         self.actor_target.set_weights(
