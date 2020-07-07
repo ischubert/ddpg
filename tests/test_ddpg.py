@@ -33,7 +33,7 @@ critic = keras.Model(
     outputs=fx
 )
 critic.compile(
-    optimizer='Adam',
+    optimizer=tf.keras.optimizers.Adam(lr=0.01),
     loss='mse'
 )
 
@@ -66,14 +66,18 @@ actor = keras.Model(
     outputs=fx
 )
 # we don't compile the model, but only assign it an optimizer
-actor.optimizer = tf.keras.optimizers.Adam(lr=0.01)
+actor.compile(
+    tf.keras.optimizers.Adam(lr=0.01),
+    loss='mse'
+)
 
 # %%
 agent = ddpg.ddpg.DDPGBase(
     actor,
     critic,
-    gamma=0,
-    actor_epochs=100
+    gamma=0.9,
+    actor_epochs=10,
+    tau=0.4
 )
 
 # %%
@@ -101,16 +105,31 @@ def calculate_reward(next_states, goal):
         axis=-1
     )).reshape(-1)
 
-for iteration in range(1000):
+def calculate_next_state(state, action):
+    return np.clip(
+        state + action/5,
+        0, 1
+    ).reshape(-1)
+
+n_iters = 10000
+for iteration in range(n_iters):
+    if len(states)>1000:
+        states = states[-1000:]
+        actions = actions[-1000:]
+        goals = goals[-1000:]
+        rewards = rewards[-1000:]
+        next_states = next_states[-1000:]
+
+    if iteration%50==1:
+        print('Iteration {}/{}'.format(iteration, n_iters))
 
     state = np.random.rand(2)
 
     action = 2*np.random.rand(2)-1
     action = action / np.linalg.norm(action)
 
-    next_state = np.clip(
-        state + action/20,
-        0, 1
+    next_state = calculate_next_state(
+        state, action
     )
 
     reward = calculate_reward(
@@ -124,7 +143,7 @@ for iteration in range(1000):
     rewards.append(reward)
     next_states.append(next_state)
 
-    if iteration % 10 == 1:
+    if iteration % 100 == 1:
         agent.train(
             np.array(states),
             np.array(actions),
@@ -133,7 +152,7 @@ for iteration in range(1000):
             np.array(next_states)
         )
 
-    if iteration % 10 == 1:
+    if iteration % 1000 == 1:
 
         returns = []
 
@@ -149,12 +168,9 @@ for iteration in range(1000):
                     test_state.reshape((1, 2)),
                     goal.reshape((1, 2))
                 ]))
-                # actor only outputs normalized actions
-                test_state += action.reshape(-1)/20
 
-                test_state = np.clip(
-                    test_state + action.reshape(-1)/20,
-                    0, 1
+                test_state = calculate_next_state(
+                    test_state, action.reshape(-1)
                 )
 
                 test_rewards.append(
@@ -195,7 +211,7 @@ for iteration in range(1000):
             [0,-1]
         ], dtype=float)
         q_vals = np.array([
-            np.array(agent.critic.predict([
+            np.array(agent.critic([
                 state_grid,
                 np.repeat(
                     goal[None,:],
@@ -218,6 +234,7 @@ for iteration in range(1000):
             )
         )
         plt.colorbar()
+        plt.show()
 
         winner = np.argmax(
             q_vals,
@@ -259,12 +276,15 @@ model = keras.models.Sequential([
     keras.layers.Dense(1, activation='relu')
 ])
 
-model.optimizer = keras.optimizers.Adam(lr=0.0001)
+model.compile(
+    optimizer = keras.optimizers.Adam(lr=0.0001),
+    loss = 'mse'
+)
 
 mean_vals = []
 for _ in range(1000):
     with tf.GradientTape() as tape:
-        Y = model.predict(
+        Y = model(
             np.random.rand(1000,5)
         )
         loss = -tf.math.reduce_mean(Y)

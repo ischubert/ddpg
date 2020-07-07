@@ -52,7 +52,7 @@ class DDPGBase():
         Train both actor and critic based on data from the buffer
         """
         # the critic target is calculated from the target networks
-        critic_targets = rewards.reshape(-1, 1) + self.gamma*np.array(self.critic_target.predict([
+        critic_targets = rewards.reshape(-1, 1) + self.gamma*np.array(self.critic_target([
             next_states,
             # next actions
             self.actor_target([
@@ -96,7 +96,7 @@ class DDPGBase():
                         states[batch],
                         goals[batch]
                     ])
-                    critic_value = self.critic.predict([
+                    critic_value = self.critic([
                         states[batch],
                         actor_actions,
                         goals[batch]
@@ -111,6 +111,8 @@ class DDPGBase():
                 self.actor.optimizer.apply_gradients(
                     zip(actor_grad, self.actor.trainable_variables)
                 )
+
+                # breakpoint()
 
                 mean_loss += float(actor_loss) * (-1/len(batches))
             
