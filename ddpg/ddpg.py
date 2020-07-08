@@ -74,10 +74,8 @@ class DDPGBase():
             critic_targets,
             epochs=self.critic_epochs,
             batch_size=self.critic_batch_size,
-            verbose=1
+            verbose=0
         )
-
-        print('hi!')
 
         # update actor
         for epoch_count in range(self.actor_epochs):

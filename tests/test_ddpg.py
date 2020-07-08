@@ -67,7 +67,7 @@ actor = keras.Model(
 )
 # we don't compile the model, but only assign it an optimizer
 actor.compile(
-    tf.keras.optimizers.Adam(lr=0.01),
+    tf.keras.optimizers.Adam(lr=0.002),
     loss='mse'
 )
 
@@ -100,18 +100,18 @@ state_grid = np.stack(np.meshgrid(
 def calculate_reward(next_states, goal):
     next_states = next_states.reshape(-1,2)
 
-    return (2 - np.linalg.norm(
+    return (np.linalg.norm(
         goal[None,:] - next_states,
         axis=-1
-    )).reshape(-1)
+    ).reshape(-1) < 0.2).astype(np.float)
 
 def calculate_next_state(state, action):
     return np.clip(
-        state + action/5,
+        state + action/40,
         0, 1
     ).reshape(-1)
 
-n_iters = 10000
+n_iters = 6000
 for iteration in range(n_iters):
     if len(states)>1000:
         states = states[-1000:]
@@ -135,7 +135,7 @@ for iteration in range(n_iters):
     reward = calculate_reward(
         next_state,
         goal
-    )
+    )[0]
 
     states.append(state)
     actions.append(action)
@@ -153,7 +153,6 @@ for iteration in range(n_iters):
         )
 
     if iteration % 1000 == 1:
-
         returns = []
 
         plt.figure(figsize=(7, 7))
@@ -177,7 +176,7 @@ for iteration in range(n_iters):
                     calculate_reward(
                         test_state,
                         goal
-                    )
+                    )[0]
                 )
 
             returns.append(
