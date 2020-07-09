@@ -40,6 +40,19 @@ class DDPGBase():
             self.critic
         )
 
+    def get_action(
+            self,
+            state,
+            goal
+    ):
+        """
+        query optimal action from actor
+        """
+        return np.array(self.actor([
+            state.reshape((1, -1)),
+            goal.reshape((1, -1))
+        ])).reshape(-1)
+
     def train(
             self,
             states,
@@ -102,7 +115,7 @@ class DDPGBase():
                     actor_loss = -tf.math.reduce_mean(critic_value)
                     actor_grad = tape.gradient(
                         actor_loss, self.actor.trainable_variables)
-                
+
                 # apply_gradients does a step into the opposite direction
                 # of the input gradient, since it expects the gradient to
                 # be with respect to a loss that should be minimized
@@ -113,8 +126,8 @@ class DDPGBase():
                 # breakpoint()
 
                 mean_loss += float(actor_loss) * (-1/len(batches))
-            
-            if epoch_count%10 == 1:
+
+            if epoch_count % 10 == 1:
                 print('Epoch {}/{}: Actor mean return {}'.format(
                     epoch_count, self.actor_epochs, mean_loss
                 ))
