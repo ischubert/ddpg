@@ -21,6 +21,7 @@ class DDPGBase():
             actor_epochs=10,
             critic_batch_size=32,
             actor_batch_size=32,
+            clipping=None
     ):
         self.actor = actor
         self.critic = critic
@@ -30,6 +31,10 @@ class DDPGBase():
         self.actor_epochs = actor_epochs
         self.critic_batch_size = critic_batch_size
         self.actor_batch_size = actor_batch_size
+        self.clipping = clipping
+
+        if self.clipping is not None:
+            assert len(clipping) == 2
 
         # create target networks by cloning
         # the original networks
@@ -74,6 +79,13 @@ class DDPGBase():
             ]),
             goals
         ]))
+        if self.clipping is not None:
+            critic_targets = np.clip(
+                critic_targets,
+                self.clipping[0],
+                self.clipping[1]
+            )
+
 
         # update critic
         self.critic.fit(
