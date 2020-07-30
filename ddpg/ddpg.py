@@ -88,7 +88,7 @@ class DDPGBase():
             )
         if verbose:
             print(
-                'critic_targets: min={}, mean={},max={}'.format(
+                'critic_targets: min={}, mean={}, max={}'.format(
                     np.min(critic_targets), np.mean(
                         critic_targets), np.max(critic_targets)
                 )
