@@ -64,7 +64,8 @@ class DDPGBase():
             actions,
             goals,
             rewards,
-            next_states
+            next_states,
+            verbose=0
     ):
         """
         Train both actor and critic based on data from the buffer
@@ -85,8 +86,14 @@ class DDPGBase():
                 self.clipping[0],
                 self.clipping[1]
             )
-
-
+        if verbose:
+            print(
+                'critic_targets: min={}, mean={},max={}'.format(
+                    np.min(critic_targets), np.mean(
+                        critic_targets), np.max(critic_targets)
+                )
+            )
+        
         # update critic
         self.critic.fit(
             # X
@@ -139,7 +146,7 @@ class DDPGBase():
 
                 mean_loss += float(actor_loss) * (-1/len(batches))
 
-            if epoch_count % 10 == 1:
+            if (epoch_count % 10 == 1) or (verbose > 0):
                 print('Epoch {}/{}: Actor mean return {}'.format(
                     epoch_count, self.actor_epochs, mean_loss
                 ))

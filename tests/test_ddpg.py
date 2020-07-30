@@ -75,13 +75,14 @@ actor.compile(
 agent = ddpg.ddpg.DDPGBase(
     actor,
     critic,
+    critic_epochs=1,
+    actor_epochs=1,
     gamma=0.9,
-    actor_epochs=10,
     tau=0.4
 )
 
 # %%
-goal = np.array([0.5,0.5])
+goal = np.array([0.5, 0.5])
 
 states = []
 actions = []
@@ -97,13 +98,15 @@ state_grid = np.stack(np.meshgrid(
     np.linspace(0, 1, n_state_grid)
 ))[[1, 0]].reshape(2, n_state_grid*n_state_grid).T
 
+
 def calculate_reward(next_states, goal):
-    next_states = next_states.reshape(-1,2)
+    next_states = next_states.reshape(-1, 2)
 
     return (np.linalg.norm(
-        goal[None,:] - next_states,
+        goal[None, :] - next_states,
         axis=-1
     ).reshape(-1) < 0.2).astype(np.float)
+
 
 def calculate_next_state(state, action):
     return np.clip(
@@ -111,16 +114,17 @@ def calculate_next_state(state, action):
         0, 1
     ).reshape(-1)
 
+
 n_iters = 6000
 for iteration in range(n_iters):
-    if len(states)>1000:
+    if len(states) > 1000:
         states = states[-1000:]
         actions = actions[-1000:]
         goals = goals[-1000:]
         rewards = rewards[-1000:]
         next_states = next_states[-1000:]
 
-    if iteration%50==1:
+    if iteration % 50 == 1:
         print('Iteration {}/{}'.format(iteration, n_iters))
 
     state = np.random.rand(2)
@@ -144,13 +148,14 @@ for iteration in range(n_iters):
     next_states.append(next_state)
 
     if iteration % 100 == 1:
-        agent.train(
-            np.array(states),
-            np.array(actions),
-            np.array(goals),
-            np.array(rewards),
-            np.array(next_states)
-        )
+        for _ in range(50):
+            agent.train(
+                np.array(states),
+                np.array(actions),
+                np.array(goals),
+                np.array(rewards),
+                np.array(next_states)
+            )
 
     if iteration % 1000 == 1:
         returns = []
@@ -204,28 +209,28 @@ for iteration in range(n_iters):
         )
 
         goals_to_plot = np.array([
-            [1,0],
-            [0,1],
-            [-1,0],
-            [0,-1]
+            [1, 0],
+            [0, 1],
+            [-1, 0],
+            [0, -1]
         ], dtype=float)
         q_vals = np.array([
             np.array(agent.critic([
                 state_grid,
                 np.repeat(
-                    goal[None,:],
+                    goal[None, :],
                     len(state_grid),
                     axis=0
                 ),
                 np.repeat(
-                    goal[None,:],
+                    goal[None, :],
                     len(state_grid),
                     axis=0
                 )
             ]))
             for goal in goals_to_plot
         ])
-        
+
         plt.imshow(
             q_vals[0].reshape(
                 n_state_grid,
@@ -244,10 +249,10 @@ for iteration in range(n_iters):
 
         plt.figure(figsize=(7, 7))
         plt.quiver(
-            state_grid[:,0],
-            state_grid[:,1],
-            winning_dirs[:,0],
-            winning_dirs[:,1]
+            state_grid[:, 0],
+            state_grid[:, 1],
+            winning_dirs[:, 0],
+            winning_dirs[:, 1]
         )
         plt.show()
 
@@ -268,7 +273,6 @@ for iteration in range(n_iters):
 
 # %%
 # tape gradient test
-
 model = keras.models.Sequential([
     keras.layers.Dense(10, activation='relu', input_shape=(5,)),
     keras.layers.Dense(10, activation='relu'),
@@ -276,15 +280,15 @@ model = keras.models.Sequential([
 ])
 
 model.compile(
-    optimizer = keras.optimizers.Adam(lr=0.0001),
-    loss = 'mse'
+    optimizer=keras.optimizers.Adam(lr=0.0001),
+    loss='mse'
 )
 
 mean_vals = []
 for _ in range(1000):
     with tf.GradientTape() as tape:
         Y = model(
-            np.random.rand(1000,5)
+            np.random.rand(1000, 5)
         )
         loss = -tf.math.reduce_mean(Y)
 
@@ -297,8 +301,8 @@ for _ in range(1000):
         )
     mean_vals.append(
         np.mean(
-                model(
-                np.random.rand(100,5)
+            model(
+                np.random.rand(100, 5)
             )
         )
     )
