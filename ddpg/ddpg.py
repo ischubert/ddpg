@@ -106,7 +106,7 @@ class DDPGBase():
             critic_targets,
             epochs=self.critic_epochs,
             batch_size=self.critic_batch_size,
-            verbose=0
+            verbose=verbose
         )
 
         # update actor
