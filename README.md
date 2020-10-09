@@ -1,6 +1,6 @@
 # ddpg
 
-Reinforcement learning in python using DDPG (Lillicrap 2016)
+Reinforcement learning in python using DDPG (Lillicrap et al. 2016)
 
 ## Setup
 Clone this repo and install the project with editable files:
