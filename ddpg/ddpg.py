@@ -93,7 +93,7 @@ class DDPGBase():
                         critic_targets), np.max(critic_targets)
                 )
             )
-        
+
         # update critic
         self.critic.fit(
             # X
