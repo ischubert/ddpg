@@ -10,9 +10,8 @@ jobs:
         strategy:
             matrix:
                 python-version: [3.5, 3.6, 3.7, 3.8]
-    
-    steps:
-        - uses: actions/checkout@v2 # checks out the repo and downloads it to the runner
+        steps:
+        - uses: actions/checkout@v2 # checks out repo and downloads it to runner
         - name: Set up Python ${{ matrix.python-version }}
           uses: actions/setup-python@v2 # setup python env
           with:
