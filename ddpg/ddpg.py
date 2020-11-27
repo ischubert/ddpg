@@ -21,6 +21,7 @@ class DDPGBase():
             actor_epochs=10,
             critic_batch_size=32,
             actor_batch_size=32,
+            flatten_goal=True,
             clipping=None
     ):
         self.actor = actor
@@ -31,6 +32,7 @@ class DDPGBase():
         self.actor_epochs = actor_epochs
         self.critic_batch_size = critic_batch_size
         self.actor_batch_size = actor_batch_size
+        self.flatten_goal = flatten_goal
         self.clipping = clipping
 
         if self.clipping is not None:
@@ -48,14 +50,20 @@ class DDPGBase():
     def get_action(
             self,
             state,
-            goal
+            goal,
     ):
         """
         query optimal action from actor
         """
+        if self.flatten_goal:
+            goal = goal.reshape((1, -1))
+        else:
+            goal = np.expand_dims(
+                goal, axis=0
+            )
         return np.array(self.actor([
             state.reshape((1, -1)),
-            goal.reshape((1, -1))
+            goal
         ])).reshape(-1)
 
     def train(
