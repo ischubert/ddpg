@@ -154,7 +154,7 @@ class DDPGBase():
 
                 mean_loss += float(actor_loss) * (-1/len(batches))
 
-            if (epoch_count % 10 == 1) or (verbose > 0):
+            if (epoch_count % 10 == 0) or (verbose > 0):
                 print('Epoch {}/{}: Actor mean return {}'.format(
                     epoch_count, self.actor_epochs, mean_loss
                 ))

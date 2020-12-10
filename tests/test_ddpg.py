@@ -329,6 +329,6 @@ def test_tape_gradient(show=False):
         last_mean_vals.append(
             mean_vals[-1]
         )
-    assert np.mean(last_mean_vals) > 2
+    assert np.mean(last_mean_vals) > 1.8
 
 # %%
